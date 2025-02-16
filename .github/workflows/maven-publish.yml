@@ -59,12 +59,6 @@ jobs:
         with:
           registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
 
-      - name: Connect to EC2 instance
-        uses: aws-actions/aws-ssh@v2 
-        with:
-          hostname: ec2-44-211-39-254.compute-1.amazonaws.com 
-          username: ec2-user
-
       - name: Deploy application
         run: |
           ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
