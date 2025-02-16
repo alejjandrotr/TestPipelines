@@ -69,7 +69,7 @@ jobs:
 
       - name: Deploy application
         run: |
-          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
-          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker stop my-app'
-          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker rm my-app'
-          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh -i $HOME/key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh -i $HOME/key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker stop my-app'
+          ssh -i $HOME/key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker rm my-app'
+          ssh -i $HOME/key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
