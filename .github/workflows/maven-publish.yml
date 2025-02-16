@@ -61,8 +61,7 @@ jobs:
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh/
-          PRIVATE_KEY=$(echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\n')
-          echo "$PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 400 ~/.ssh/id_rsa
           ssh-keyscan ec2-44-211-39-254.compute-1.amazonaws.com >> ~/.ssh/known_hosts
 
