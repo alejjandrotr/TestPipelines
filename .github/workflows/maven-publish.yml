@@ -60,9 +60,10 @@ jobs:
           registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
 
       - name: Connect to EC2 instance
-        uses: actions/ssh-keygen@v2 
+        uses: aws-actions/aws-ssh@v2 
         with:
-          key_filename: 'id_rsa' 
+          hostname: ec2-44-211-39-254.compute-1.amazonaws.com 
+          username: ec2-user
 
       - name: Deploy application
         run: |
