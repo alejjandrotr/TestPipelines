@@ -27,7 +27,6 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.ECR_REGISTRY }}:${{ github.sha }} 
-          # Use SHA for unique image tag
 
   deploy:
     needs: build
@@ -41,7 +40,11 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: 'us-east-1' # Replace with your AWS region
+          region: 'us-east-1' # Reemplaza con tu región de AWS
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin -e none
 
       - name: Connect to EC2 instance
         uses: oreilly-infra/aws-ssh@v2
