@@ -49,12 +49,12 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           region: 'us-east-1'
-          instance_ids: 'your_ec2_instance_id' 
+          instance_ids: 'i-060b469b624d866ce' 
           username: 'ec2-user'
 
       - name: Deploy application
         run: |
-          ssh ec2-user@<your_ec2_instance_ip> 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
-          ssh ec2-user@<your_ec2_instance_ip> 'docker stop my-app'
-          ssh ec2-user@<your_ec2_instance_ip> 'docker rm my-app'
-          ssh ec2-user@<your_ec2_instance_ip> 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker stop my-app'
+          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker rm my-app'
+          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
