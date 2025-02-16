@@ -67,6 +67,15 @@ jobs:
           echo "$DEPLOY_KEY" >> $HOME/key.pem
           chmod 400 $HOME/key.pem
 
+      - name: ls dirs
+        id: setup-key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          ls
+          cd $HOME
+          ls
+
       - name: Deploy application
         run: |
           ssh -i key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
