@@ -68,7 +68,7 @@ jobs:
           chmod 400 $HOME/key.pem
 
       - name: ls dirs
-        id: setup-key
+        id: setup-ls
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
