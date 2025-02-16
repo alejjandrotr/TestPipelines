@@ -58,10 +58,18 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
         with:
           registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
+      
+      - name: Setup key
+        id: setup-key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          echo "$DEPLOY_KEY" >> $HOME/key.pem
+          chmod 400 $HOME/key.pem
 
       - name: Deploy application
         run: |
-          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
-          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker stop my-app'
-          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker rm my-app'
-          ssh ec2-user@ec2-44-211-39-254.compute-1.amazonaws.com 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker stop my-app'
+          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker rm my-app'
+          ssh ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
