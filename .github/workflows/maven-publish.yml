@@ -18,27 +18,26 @@ jobs:
           java-version: '17'
 
       - name: Build with Maven
-        run: |
-          mvn clean package
-          
+        run: mvn clean package
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: 'us-east-1'
-  
+
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v1
         with:
-          registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
-          
+          registry-id: ${{ secrets.AWS_ACCOUNT_ID }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
           push: true
-          tags: ${{ secrets.ECR_REGISTRY }}:${{ github.sha }} 
+          tags: ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}
 
   deploy:
     needs: build
@@ -57,28 +56,20 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v1
         with:
-          registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
-      
-      - name: Setup key
-        id: setup-key
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-        run: |
-          echo "$DEPLOY_KEY" >> $HOME/key.pem
-          chmod 400 $HOME/key.pem
+          registry-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
-      - name: ls dirs
-        id: setup-ls
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      - name: Prepare SSH key
         run: |
-          ls
-          cd $HOME
-          ls
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.DEPLOY_KEY }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+          ssh-keyscan ec2-44-211-39-254.compute-1.amazonaws.com >> ~/.ssh/known_hosts
 
       - name: Deploy application
         run: |
-          ssh -i key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
-          ssh -i key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker stop my-app'
-          ssh -i key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker rm my-app'
-          ssh -i key.pem ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com "
+            docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }} &&
+            docker stop my-app &&
+            docker rm my-app &&
+            docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}
+          "
