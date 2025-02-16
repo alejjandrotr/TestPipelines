@@ -21,9 +21,16 @@ jobs:
         run: |
           mvn clean package
           
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: 'us-east-1'
       - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin -e none
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
           
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
@@ -47,8 +54,9 @@ jobs:
           region: 'us-east-1' # Reemplaza con tu región de AWS
 
       - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin -e none
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-id: ${{ secrets.AWS_ACCOUNT_ID }} 
 
       - name: Connect to EC2 instance
         uses: oreilly-infra/aws-ssh@v2
