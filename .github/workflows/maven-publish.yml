@@ -20,7 +20,10 @@ jobs:
       - name: Build with Maven
         run: mvn clean package
 
-      - name: Configure AWS Credentials
+      - name: Build and tag Docker image
+        run: docker build -t ${{ secrets.ECR_REGISTRY }}:${{ github.sha }} .
+
+      - name: Configure AWS Credentials (for ECR push)
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -30,46 +33,33 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v1
         with:
-          registry-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          registry-ids: ${{ secrets.AWS_ACCOUNT_ID }}
+          aws-region: us-east-1
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}
+      - name: Push Docker image to ECR
+        run: docker push ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (Not strictly needed, but good practice)
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Still needed for other AWS actions if any
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: 'us-east-1'
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v1
-        with:
-          registry-id: ${{ secrets.AWS_ACCOUNT_ID }}
-
-      - name: Prepare SSH key
+      - name: Deploy application (No SSH needed!)
         run: |
-          mkdir -p ~/.ssh/
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan ec2-44-211-39-254.compute-1.amazonaws.com >> ~/.ssh/known_hosts
-
-      - name: Deploy application
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@ec2-44-211-39-254.compute-1.amazonaws.com "
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 778465053219.dkr.ecr.us-east-1.amazonaws.com
+          INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${{ secrets.EC2_INSTANCE_NAME }}" --query 'Reservations[*].Instances[*].InstanceId' --output text)
+          # Get the private IP address of the EC2 instance
+          PRIVATE_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].PrivateIpAddress' --output text)
+          ssh -i ~/.ssh/id_rsa ubuntu@$PRIVATE_IP "
             docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }} &&
-            docker stop my-app &&
-            docker rm my-app &&
+            docker stop --time=10 my-app || true &&
+            docker rm my-app || true &&
             docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}
           "
