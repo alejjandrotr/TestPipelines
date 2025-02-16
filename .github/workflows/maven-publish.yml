@@ -1,4 +1,4 @@
-name: Deploy Spring Boot app to EC2
+name: Deploy Spring Boot App to AWS EC2
 
 on:
   push:
@@ -8,32 +8,53 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Build with Maven
-        run: mvn clean package
-      - name: Build Docker image
-        run: docker build -t my-registry/my-app:latest .
-      - name: Push image to ECR
-        uses: aws-actions/amazon-ecr-login@v1
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
-          registry-id: ${{ secrets.AWS_ACCOUNT_ID }}
-        run: docker push $ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: |
+          mvn clean package 
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.ECR_REGISTRY }}:${{ github.sha }} 
+          # Use SHA for unique image tag
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: 'us-east-1' # Replace with your AWS region
+
       - name: Connect to EC2 instance
         uses: oreilly-infra/aws-ssh@v2
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           region: 'us-east-1'
-          instance_ids: 'your_ec2_instance_id'
+          instance_ids: 'your_ec2_instance_id' 
           username: 'ec2-user'
+
       - name: Deploy application
         run: |
-          ssh ec2-user@<your_ec2_instance_ip> 'docker pull my-registry/my-image:latest'
+          ssh ec2-user@<your_ec2_instance_ip> 'docker pull ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
           ssh ec2-user@<your_ec2_instance_ip> 'docker stop my-app'
           ssh ec2-user@<your_ec2_instance_ip> 'docker rm my-app'
-          ssh ec2-user@<your_ec2_instance_ip> 'docker run -d -p 8080:8080 --name my-app my-registry/my-image:latest'
+          ssh ec2-user@<your_ec2_instance_ip> 'docker run -d -p 8080:8080 --name my-app ${{ secrets.ECR_REGISTRY }}:${{ github.sha }}'
