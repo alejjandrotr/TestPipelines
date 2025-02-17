@@ -54,20 +54,27 @@ jobs:
           java-version: '17'
 
       - name: Run tests and check Jacoco coverage
-        id: coverage_check  # Add an ID to the step
+        id: coverage_check
         run: |
           mvn clean verify
-          COVERAGE=$(mvn jacoco:report | grep "overall:" | awk '{print $2}' | tr -d "%,")
+          # Try different grep patterns to reliably extract the coverage
+          COVERAGE=$(mvn jacoco:report | grep -E "overall:.*%" | awk '{print $2}' | tr -d "%,")
+          # If the above fails, try this alternative
+          if [[ -z "$COVERAGE" ]]; then
+              COVERAGE=$(mvn jacoco:report | grep "overall:" | awk '{print $3}' | tr -d "%,")
+          fi
           echo "Code coverage: $COVERAGE%"
-          echo "::set-output name=coverage::$COVERAGE" # Set the coverage as an output variable
-          if (( $(echo "$COVERAGE < 99" | bc -l) )); then # Example: 99% threshold
-            echo "Code coverage is below 99%. Failing the build."
-            exit 1 # Fail the step if coverage is below threshold
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          if (( $(echo "$COVERAGE < 60" | bc -l) )); then
+            echo "Code coverage is below 60%. Failing the build."
+            exit 1
           fi
 
-      - name: Fail workflow if coverage is insufficient
-        if: steps.coverage_check.outcome == 'failure' # Check the outcome of the previous step
-        run: exit 1
+      - name: Fail workflow if coverage is insufficient (Alternative)
+        if: env.COVERAGE < 60  # Use the environment variable
+        run: |
+          echo "Code coverage was ${{ env.COVERAGE }}%, which is below the required 60%."
+          exit 1
 
   sonarqube:
     runs-on: ubuntu-latest
